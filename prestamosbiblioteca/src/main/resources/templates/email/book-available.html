@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head><meta charset="UTF-8"/></head>
+<body style="font-family: Arial, Helvetica, sans-serif; color:#1f2937; margin:0; padding:24px; background:#f3f4f6;">
+  <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:12px; padding:32px;">
+    <h1 style="font-size:20px; margin:0 0 16px; color:#047857;">¡El libro que esperabas está disponible!</h1>
+    <p>El libro <strong th:text="${bookTitle}">Título</strong> quedó reservado para vos.</p>
+    <p>Tenés tiempo de retirarlo hasta <strong th:text="${expiresAt}">17/01/2026 10:00</strong>.
+       Pasado ese plazo, la reserva pasa a la siguiente persona en la fila.</p>
+  </div>
+</body>
+</html>
