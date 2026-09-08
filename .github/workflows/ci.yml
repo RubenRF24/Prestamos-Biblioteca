@@ -21,7 +21,9 @@ jobs:
       # Los tests de integración usan Testcontainers (Postgres); el runner ya trae Docker.
       - name: Run tests
         working-directory: prestamosbiblioteca
-        run: ./mvnw -B test
+        run: |
+          chmod +x mvnw
+          ./mvnw -B test
 
   frontend-build:
     name: Frontend · build
