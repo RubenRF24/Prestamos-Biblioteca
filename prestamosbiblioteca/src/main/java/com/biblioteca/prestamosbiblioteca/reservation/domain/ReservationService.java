@@ -3,6 +3,7 @@ package com.biblioteca.prestamosbiblioteca.reservation.domain;
 import com.biblioteca.prestamosbiblioteca.book.domain.Book;
 import com.biblioteca.prestamosbiblioteca.book.domain.BookService;
 import com.biblioteca.prestamosbiblioteca.book.domain.BookStatus;
+import com.biblioteca.prestamosbiblioteca.loan.infra.LoanRepository;
 import com.biblioteca.prestamosbiblioteca.reservation.infra.ReservationRepository;
 import com.biblioteca.prestamosbiblioteca.shared.exception.BookNotAvailableException;
 import com.biblioteca.prestamosbiblioteca.shared.exception.ResourceNotFoundException;
@@ -21,38 +22,66 @@ public class ReservationService {
             List.of(ReservationStatus.PENDIENTE, ReservationStatus.NOTIFICADO);
 
     private final ReservationRepository reservationRepository;
+    private final LoanRepository loanRepository;
     private final BookService bookService;
     private final ReservationProperties properties;
     private final ApplicationEventPublisher events;
 
     public ReservationService(ReservationRepository reservationRepository,
+                              LoanRepository loanRepository,
                               BookService bookService,
                               ReservationProperties properties,
                               ApplicationEventPublisher events) {
         this.reservationRepository = reservationRepository;
+        this.loanRepository = loanRepository;
         this.bookService = bookService;
         this.properties = properties;
         this.events = events;
     }
 
-    /** Anotarse en la lista de espera de un libro que no está disponible. */
+    /**
+     * Solicitud/reserva de un libro. Si está DISPONIBLE, queda RETENIDO (RESERVADO) para el usuario
+     * durante la ventana de exclusividad, a la espera de que el bibliotecario confirme el préstamo.
+     * Si está prestado, entra a la lista de espera (PENDIENTE) y se le notificará al devolverse.
+     */
     @Transactional
     public Reservation create(Long bookId, AppUser requester) {
         Book book = bookService.getEntity(bookId);
-        if (book.getStatus() == BookStatus.DISPONIBLE) {
-            throw new BookNotAvailableException("El libro está disponible: pedilo directamente en préstamo");
+        // No tiene sentido reservar un libro que vos mismo tenés prestado.
+        if (loanRepository.existsByBookIdAndBorrowerIdAndReturnDateIsNull(bookId, requester.getId())) {
+            throw new BookNotAvailableException("Ya tenés este libro prestado, no podés reservarlo");
         }
         if (reservationRepository.existsByBookIdAndRequesterIdAndStatusIn(bookId, requester.getId(), ACTIVE_STATES)) {
             throw new BookNotAvailableException("Ya tenés una reserva activa para este libro");
         }
-        Reservation reservation = Reservation.builder()
+        Instant now = Instant.now();
+        Reservation.ReservationBuilder builder = Reservation.builder()
                 .book(book)
                 .requester(requester)
                 .requesterEmail(requester.getEmail())
-                .requestedAt(Instant.now())
-                .status(ReservationStatus.PENDIENTE)
-                .build();
-        return reservationRepository.save(reservation);
+                .requestedAt(now);
+        if (book.getStatus() == BookStatus.DISPONIBLE) {
+            // Retención: el libro queda apartado hasta que el bibliotecario confirme.
+            builder.status(ReservationStatus.NOTIFICADO)
+                    .notifiedAt(now)
+                    .expiresAt(now.plusSeconds(properties.holdHours() * 3600L));
+            Reservation reservation = reservationRepository.save(builder.build());
+            bookService.changeStatus(book, BookStatus.RESERVADO);
+            return reservation;
+        }
+        // Lista de espera para cuando se devuelva.
+        return reservationRepository.save(builder.status(ReservationStatus.PENDIENTE).build());
+    }
+
+    /** Reservas retenidas (NOTIFICADO) a la espera de que el bibliotecario confirme el préstamo. */
+    public List<Reservation> findPendingConfirmation() {
+        return reservationRepository.findByStatusOrderByNotifiedAtAsc(ReservationStatus.NOTIFICADO);
+    }
+
+    @Transactional
+    public void markFulfilled(Reservation reservation) {
+        reservation.setStatus(ReservationStatus.CUMPLIDO);
+        reservationRepository.save(reservation);
     }
 
     @Transactional
@@ -123,6 +152,11 @@ public class ReservationService {
             releaseOrPromote(reservation.getBook());
         }
         return expired.size();
+    }
+
+    /** Reservas activas (pendientes o notificadas) del usuario. */
+    public List<Reservation> findMine(Long requesterId) {
+        return reservationRepository.findByRequesterIdAndStatusIn(requesterId, ACTIVE_STATES);
     }
 
     public Reservation getById(Long reservationId) {
