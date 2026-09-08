@@ -92,6 +92,27 @@ public class NotificationService {
                 "email/book-available", vars);
     }
 
+    public void sendReservationCreated(Long reservationId) {
+        Reservation reservation = reservationService.getById(reservationId);
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("bookTitle", reservation.getBook().getTitle());
+        vars.put("held", reservation.getExpiresAt() != null);
+        vars.put("expiresAt", reservation.getExpiresAt() != null
+                ? DATE_TIME.format(reservation.getExpiresAt()) : "");
+        mailSender.send(reservation.getRequesterEmail(),
+                "Reserva registrada: " + reservation.getBook().getTitle(),
+                "email/reservation-created", vars);
+    }
+
+    public void sendReservationCancelled(Long reservationId) {
+        Reservation reservation = reservationService.getById(reservationId);
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("bookTitle", reservation.getBook().getTitle());
+        mailSender.send(reservation.getRequesterEmail(),
+                "Reserva cancelada: " + reservation.getBook().getTitle(),
+                "email/reservation-cancelled", vars);
+    }
+
     public void sendWelcome(Long userId) {
         AppUser user = userService.getById(userId);
         Map<String, Object> vars = new HashMap<>();

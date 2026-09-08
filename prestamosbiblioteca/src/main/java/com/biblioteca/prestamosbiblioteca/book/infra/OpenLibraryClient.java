@@ -38,7 +38,10 @@ public class OpenLibraryClient {
         this.coversUrl = properties.coversUrl();
     }
 
-    @Cacheable(cacheNames = "openLibraryLookup", key = "#isbn", unless = "#result == null || !#result.isPresent()")
+    @Cacheable(
+            cacheNames = "openLibraryLookup",
+            key = "#isbn",
+            unless = "#result == null || (#result instanceof T(java.util.Optional) ? !#result.isPresent() : false)")
     public Optional<ExternalBookData> lookupByIsbn(String isbn) {
         try {
             OpenLibraryResponse response = restClient.get()

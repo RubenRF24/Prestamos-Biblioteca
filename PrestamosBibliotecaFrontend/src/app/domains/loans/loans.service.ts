@@ -19,6 +19,11 @@ export class LoansService {
     return this.http.get<Page<Loan>>(`${API_BASE}/loans/active`, { params });
   }
 
+  /** Préstamo directo a un tercero (BIBLIOTECARIO): crea la cuenta USUARIO si no existe. */
+  create(payload: { bookId: number; borrowerName: string; borrowerEmail: string }): Observable<Loan> {
+    return this.http.post<Loan>(`${API_BASE}/loans`, payload);
+  }
+
   /** El bibliotecario confirma una reserva retenida y arranca el préstamo. */
   confirm(reservationId: number): Observable<Loan> {
     return this.http.post<Loan>(`${API_BASE}/loans/confirm/${reservationId}`, {});

@@ -31,6 +31,10 @@ Esto levanta **todo**:
 No hace falta crear ningún archivo: el `docker-compose.yml` trae defaults de desarrollo.
 Para personalizarlos, copiá `.env.example` a `.env` y editá lo que necesites.
 
+> **Nota de puertos:** si ya tenés un proceso en `8080`/`4200` (p. ej. un `java` local), el
+> compose falla con `ports are not available`. Creá un `.env` con `BACKEND_PORT=18080` y
+> `FRONTEND_PORT=14200` (como está ahora en este host) y levantá con `docker compose up --build`.
+
 ### Usuario ADMIN de prueba
 
 Se crea automáticamente al arrancar (seeder idempotente):
@@ -38,12 +42,39 @@ Se crea automáticamente al arrancar (seeder idempotente):
 - **Correo:** `admin@biblioteca.local`
 - **Contraseña:** `Admin123!`
 
-Cualquiera puede registrarse desde el frontend (rol `BIBLIOTECARIO`).
+Cualquiera puede registrarse desde el frontend: esas cuentas son **`USUARIO`** (lectores). Los
+**`BIBLIOTECARIO`** (personal de mesa) los da de alta el ADMIN desde el panel de administración.
 
 ### Ver los correos
 
-Todo correo que envía la app (confirmación de préstamo, recordatorio, bloqueo, libro disponible,
-activación de cuenta) aparece en **MailHog → http://localhost:8025**. No se usan credenciales SMTP reales.
+Todo correo que envía la app aparece en **MailHog → http://localhost:8025** (no se usan credenciales
+SMTP reales). Los envíos: bienvenida, reserva registrada, reserva cancelada, libro disponible,
+confirmación de préstamo, recordatorio de vencimiento, aviso de bloqueo y activación de cuenta.
+
+---
+
+## Cómo usar la aplicación
+
+Tres roles, cada uno con su vista:
+
+**ADMIN** (`admin@biblioteca.local` / `Admin123!`)
+- Catálogo: **agregar** libros (con **"Autocompletar desde ISBN"**), **editar** y **eliminar**.
+- **Administración**: registrar bibliotecarios, ver estadísticas y **cuentas bloqueadas** (con desbloqueo).
+- No presta ni reserva.
+
+**USUARIO** (te registrás desde "Registrate")
+- Buscás en el catálogo y **reservás** un libro (te llega un correo de reserva).
+- Podés **cancelar** tu reserva (te llega el correo de cancelación).
+- **Mis préstamos**: ves lo que tenés prestado y su vencimiento.
+
+**BIBLIOTECARIO** (lo crea el ADMIN)
+- En el catálogo ve las **reservas por confirmar** y **confirma el préstamo** (ahí arranca el plazo de 14 días).
+- También puede **prestar directo a un tercero** (nombre + email); si esa persona no tiene cuenta, se
+  crea como `USUARIO` y recibe un correo para activarla.
+- **Préstamos activos**: lista paginada de quién tiene cada libro, con **registrar devolución**.
+
+**Flujo de préstamo:** USUARIO reserva → el libro queda retenido → BIBLIOTECARIO confirma → préstamo
+activo (14 días) → devolución en la mesa. Todo con su correo correspondiente.
 
 ---
 
@@ -112,9 +143,11 @@ Cuando el enunciado dejaba algo ambiguo, se documenta acá la decisión tomada.
 3. **RestClient en vez de WebClient.** El backend es servlet (webmvc), sin WebFlux. `RestClient`
    (Spring 6+) es el cliente HTTP natural para consumir Open Library.
 
-4. **Tolerancia a fallos de Open Library.** El lookup tiene timeout de 3s y cachea el resultado
-   (Caffeine). Si la API no responde o falla, **el alta del libro no se rompe**: se guarda con los
-   datos manuales y el enriquecimiento (portada, temas, año) simplemente no se aplica.
+4. **Tolerancia a fallos de Open Library.** El lookup tiene timeout de 10s y cachea el resultado
+   (Caffeine `maximumSize=500,expireAfterWrite=24h`). Si la API no responde o falla, **el alta del libro no se rompe**: se guarda con los
+   datos manuales y el enriquecimiento (portada, temas, año) simplemente no se aplica. La latencia
+   real de Open Library puede superar los 5s, por eso se subió de 3s a 10s; el bug de SpEL en
+   `@Cacheable(unless=...)` que causaba 500 en lugar de 404 ya está corregido.
 
 5. **Lista de espera con ventana de exclusividad (48h).** Al devolverse un libro con reservas, se
    notifica al **primero de la fila** (FIFO), el libro queda `RESERVADO` retenido para esa persona

@@ -2,6 +2,8 @@ package com.biblioteca.prestamosbiblioteca.notification.domain;
 
 import com.biblioteca.prestamosbiblioteca.loan.domain.LoanCreatedEvent;
 import com.biblioteca.prestamosbiblioteca.reservation.domain.BookAvailableEvent;
+import com.biblioteca.prestamosbiblioteca.reservation.domain.ReservationCancelledEvent;
+import com.biblioteca.prestamosbiblioteca.reservation.domain.ReservationCreatedEvent;
 import com.biblioteca.prestamosbiblioteca.user.domain.ActivationRequestedEvent;
 import com.biblioteca.prestamosbiblioteca.user.domain.UserBlockedEvent;
 import com.biblioteca.prestamosbiblioteca.user.domain.UserRegisteredEvent;
@@ -39,6 +41,18 @@ public class EmailEventListeners {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBookAvailable(BookAvailableEvent event) {
         notificationService.sendBookAvailable(event.reservationId());
+    }
+
+    @Async("notificationExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onReservationCreated(ReservationCreatedEvent event) {
+        notificationService.sendReservationCreated(event.reservationId());
+    }
+
+    @Async("notificationExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onReservationCancelled(ReservationCancelledEvent event) {
+        notificationService.sendReservationCancelled(event.reservationId());
     }
 
     @Async("notificationExecutor")

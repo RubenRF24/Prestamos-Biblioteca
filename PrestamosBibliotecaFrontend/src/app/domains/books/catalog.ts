@@ -164,7 +164,7 @@ import { BooksService } from './books.service';
                       }
                     </div>
                   } @else if (auth.isBibliotecario()) {
-                    <!-- El bibliotecario sólo confirma los libros que tienen una reserva retenida. -->
+                    <!-- El bibliotecario confirma reservas retenidas o presta directo a un tercero. -->
                     @if (pendingFor(book.id); as res) {
                       <div class="rounded border border-amber/60 bg-amber/5 p-2">
                         <p class="mb-2 text-xs text-muted">
@@ -175,13 +175,35 @@ import { BooksService } from './books.service';
                           Confirmar préstamo
                         </button>
                       </div>
+                    } @else if (lendingId() === book.id) {
+                      <form [formGroup]="lendForm" (ngSubmit)="submitLend(book)" class="space-y-2">
+                        <input type="text" formControlName="borrowerName" placeholder="Nombre de quien recibe"
+                          class="w-full rounded border border-line bg-surface px-2 py-1 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-forest" />
+                        <input type="email" formControlName="borrowerEmail" placeholder="Email de quien recibe"
+                          class="w-full rounded border border-line bg-surface px-2 py-1 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-forest" />
+                        <div class="flex gap-2">
+                          <button type="submit" class="rounded bg-forest px-3 py-1 text-sm font-medium text-white hover:bg-forest/90">Confirmar préstamo</button>
+                          <button type="button" (click)="cancelLend()" class="rounded border border-line bg-transparent px-3 py-1 text-sm font-medium text-ink hover:bg-forest/5">Cancelar</button>
+                        </div>
+                      </form>
+                    } @else if (book.status === 'DISPONIBLE') {
+                      <button type="button" (click)="startLend(book)"
+                        class="rounded bg-forest px-3 py-1 text-sm font-medium text-white hover:bg-forest/90">
+                        Prestar
+                      </button>
                     }
                   } @else {
                     <!-- USUARIO: reserva; si ya lo tiene, se indica. -->
                     @if (hasBorrowed(book.id)) {
                       <p class="text-sm italic text-muted">Ya lo tenés prestado</p>
-                    } @else if (hasReserved(book.id)) {
-                      <p class="text-sm italic text-muted">Ya lo reservaste</p>
+                    } @else if (myReservationFor(book.id); as r) {
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-sm italic text-muted">Ya lo reservaste</span>
+                        <button type="button" (click)="cancelReservation(r)"
+                          class="rounded border border-line px-2 py-0.5 text-xs font-medium text-out hover:bg-[#f6e7e3]">
+                          Cancelar reserva
+                        </button>
+                      </div>
                     } @else {
                       <button type="button" (click)="reserve(book)"
                         class="rounded border border-amber bg-transparent px-3 py-1 text-sm font-medium text-[#8a6115] hover:bg-amber/10">
@@ -229,8 +251,15 @@ export class Catalog implements OnInit {
 
   // USUARIO: relación con cada libro. BIBLIOTECARIO: reservas por confirmar.
   protected readonly borrowedIds = signal<Set<number>>(new Set());
-  protected readonly reservedIds = signal<Set<number>>(new Set());
+  protected readonly myReservations = signal<Reservation[]>([]);
   protected readonly pending = signal<Reservation[]>([]);
+
+  // Préstamo directo a un tercero (BIBLIOTECARIO).
+  protected readonly lendingId = signal<number | null>(null);
+  protected readonly lendForm = this.fb.nonNullable.group({
+    borrowerName: ['', [Validators.required]],
+    borrowerEmail: ['', [Validators.required, Validators.email]],
+  });
 
   ngOnInit(): void {
     this.load();
@@ -241,7 +270,10 @@ export class Catalog implements OnInit {
     return this.borrowedIds().has(bookId);
   }
   hasReserved(bookId: number): boolean {
-    return this.reservedIds().has(bookId);
+    return this.myReservations().some((r) => r.bookId === bookId);
+  }
+  myReservationFor(bookId: number): Reservation | undefined {
+    return this.myReservations().find((r) => r.bookId === bookId);
   }
   pendingFor(bookId: number): Reservation | undefined {
     return this.pending().find((r) => r.bookId === bookId);
@@ -256,7 +288,7 @@ export class Catalog implements OnInit {
         error: () => {},
       });
       this.reservationsService.mine().subscribe({
-        next: (rs) => this.reservedIds.set(new Set(rs.map((r) => r.bookId))),
+        next: (rs) => this.myReservations.set(rs),
         error: () => {},
       });
     } else if (this.auth.isBibliotecario()) {
@@ -265,6 +297,40 @@ export class Catalog implements OnInit {
         error: () => {},
       });
     }
+  }
+
+  cancelReservation(reservation: Reservation): void {
+    this.reservationsService.cancel(reservation.id).subscribe({
+      next: () => {
+        this.flash(`Cancelaste la reserva de: ${reservation.bookTitle}.`);
+        this.load();
+        this.loadRelations();
+      },
+      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo cancelar la reserva.')),
+    });
+  }
+
+  startLend(book: Book): void {
+    this.lendingId.set(book.id);
+    this.lendForm.reset({ borrowerName: '', borrowerEmail: '' });
+  }
+  cancelLend(): void {
+    this.lendingId.set(null);
+  }
+  submitLend(book: Book): void {
+    if (this.lendForm.invalid) {
+      this.lendForm.markAllAsTouched();
+      return;
+    }
+    const { borrowerName, borrowerEmail } = this.lendForm.getRawValue();
+    this.loansService.create({ bookId: book.id, borrowerName, borrowerEmail }).subscribe({
+      next: () => {
+        this.lendingId.set(null);
+        this.flash(`Préstamo registrado a ${borrowerName}.`);
+        this.load();
+      },
+      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo registrar el préstamo.')),
+    });
   }
 
   load(): void {

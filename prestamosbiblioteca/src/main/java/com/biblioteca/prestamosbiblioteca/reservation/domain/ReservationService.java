@@ -60,17 +60,20 @@ public class ReservationService {
                 .requester(requester)
                 .requesterEmail(requester.getEmail())
                 .requestedAt(now);
+        Reservation reservation;
         if (book.getStatus() == BookStatus.DISPONIBLE) {
             // Retención: el libro queda apartado hasta que el bibliotecario confirme.
             builder.status(ReservationStatus.NOTIFICADO)
                     .notifiedAt(now)
                     .expiresAt(now.plusSeconds(properties.holdHours() * 3600L));
-            Reservation reservation = reservationRepository.save(builder.build());
+            reservation = reservationRepository.save(builder.build());
             bookService.changeStatus(book, BookStatus.RESERVADO);
-            return reservation;
+        } else {
+            // Lista de espera para cuando se devuelva.
+            reservation = reservationRepository.save(builder.status(ReservationStatus.PENDIENTE).build());
         }
-        // Lista de espera para cuando se devuelva.
-        return reservationRepository.save(builder.status(ReservationStatus.PENDIENTE).build());
+        events.publishEvent(new ReservationCreatedEvent(reservation.getId()));
+        return reservation;
     }
 
     /** Reservas retenidas (NOTIFICADO) a la espera de que el bibliotecario confirme el préstamo. */
@@ -94,6 +97,7 @@ public class ReservationService {
         boolean wasHolding = reservation.getStatus() == ReservationStatus.NOTIFICADO;
         reservation.setStatus(ReservationStatus.CANCELADO);
         reservationRepository.save(reservation);
+        events.publishEvent(new ReservationCancelledEvent(reservation.getId()));
         // Si retenía el libro, hay que pasarlo al siguiente o liberarlo.
         if (wasHolding) {
             releaseOrPromote(reservation.getBook());
