@@ -1,0 +1,198 @@
+{
+  "info": {
+    "name": "Prestamos Biblioteca API",
+    "description": "Coleccion de la API de prestamos de biblioteca.\n\nAutenticacion: JWT en cookie httpOnly. Postman guarda las cookies en su cookie jar automaticamente al hacer login.\n\nCSRF: las mutaciones (POST/PUT/DELETE, salvo login/register/activate) requieren el header X-XSRF-TOKEN. El pre-request script de la coleccion lo copia automaticamente desde la cookie XSRF-TOKEN. Para obtener esa cookie por primera vez, ejecuta 'Auth > Me' o 'Login' antes de las mutaciones.\n\nSetea la variable baseUrl (por defecto http://localhost:8080).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Copia el token CSRF desde la cookie XSRF-TOKEN al header X-XSRF-TOKEN.",
+          "const token = pm.cookies.get('XSRF-TOKEN');",
+          "if (token) {",
+          "  pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: token });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Usuario Demo\",\n  \"email\": \"demo@mail.com\",\n  \"password\": \"password123\"\n}" }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@biblioteca.local\",\n  \"password\": \"Admin123!\"\n}" }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Check activation token",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/auth/activation/TOKEN", "host": ["{{baseUrl}}"], "path": ["api", "auth", "activation", "TOKEN"] }
+          }
+        },
+        {
+          "name": "Activate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/activate", "host": ["{{baseUrl}}"], "path": ["api", "auth", "activate"] },
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"TOKEN\",\n  \"password\": \"password123\"\n}" }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Books",
+      "item": [
+        {
+          "name": "List / search",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/books?q=&status=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "books"],
+              "query": [
+                { "key": "q", "value": "" },
+                { "key": "status", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lookup by ISBN (preview)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/books/lookup/9780132350884", "host": ["{{baseUrl}}"], "path": ["api", "books", "lookup", "9780132350884"] }
+          }
+        },
+        {
+          "name": "Create (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/books", "host": ["{{baseUrl}}"], "path": ["api", "books"] },
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Nuevo Libro\",\n  \"author\": \"Autor\",\n  \"isbn\": \"9780000000001\",\n  \"publishedYear\": 2020\n}" }
+          }
+        },
+        {
+          "name": "Delete (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/books/1", "host": ["{{baseUrl}}"], "path": ["api", "books", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Loans",
+      "item": [
+        {
+          "name": "Create loan",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/loans", "host": ["{{baseUrl}}"], "path": ["api", "loans"] },
+            "body": { "mode": "raw", "raw": "{\n  \"bookId\": 1\n}" }
+          }
+        },
+        {
+          "name": "My loans",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/loans/mine", "host": ["{{baseUrl}}"], "path": ["api", "loans", "mine"] }
+          }
+        },
+        {
+          "name": "Return loan",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{baseUrl}}/api/loans/1/return", "host": ["{{baseUrl}}"], "path": ["api", "loans", "1", "return"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "item": [
+        {
+          "name": "Create reservation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] },
+            "body": { "mode": "raw", "raw": "{\n  \"bookId\": 1\n}" }
+          }
+        },
+        {
+          "name": "Cancel reservation",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/reservations/1", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Stats",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/admin/stats", "host": ["{{baseUrl}}"], "path": ["api", "admin", "stats"] }
+          }
+        },
+        {
+          "name": "Blocked users",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/admin/users/blocked", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "blocked"] }
+          }
+        },
+        {
+          "name": "Unblock user",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{baseUrl}}/api/admin/users/1/unblock", "host": ["{{baseUrl}}"], "path": ["api", "admin", "users", "1", "unblock"] }
+          }
+        }
+      ]
+    }
+  ]
+}

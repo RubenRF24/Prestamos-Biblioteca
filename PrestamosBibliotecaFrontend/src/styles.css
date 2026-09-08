@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-paper: #efeadd;
+  --color-surface: #f7f3e9;
+  --color-ink: #1d2b23;
+  --color-forest: #24402f;
+  --color-clay: #7d3a2c;
+  --color-amber: #c98a2b;
+  --color-line: #d8cfbc;
+  --color-muted: #6b6553;
+  --color-ok: #2f6b4f;
+  --color-out: #a23b2e;
+  --color-res: #b07d1f;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+}
+
+:root { color-scheme: light; }
+body { background: var(--color-paper); color: var(--color-ink); }
+h1, h2, h3, .font-editorial { font-family: var(--font-serif); letter-spacing: -0.01em; }
+
+/* Feedback físico al presionar (emil-design-eng) */
+button { transition: transform 140ms cubic-bezier(.23,1,.32,1), background-color 160ms ease, border-color 160ms ease; }
+button:active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }

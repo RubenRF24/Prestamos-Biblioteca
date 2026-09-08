@@ -1,0 +1,19 @@
+# Secretos: NUNCA versionar el .env real
+.env
+
+# Backend (Maven)
+prestamosbiblioteca/target/
+
+# Frontend (Angular / Bun)
+PrestamosBibliotecaFrontend/node_modules/
+PrestamosBibliotecaFrontend/dist/
+PrestamosBibliotecaFrontend/.angular/
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+.atl/
+.agents/
+.claude/
+skills-lock.json

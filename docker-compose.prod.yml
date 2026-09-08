@@ -1,0 +1,59 @@
+# Compose de PRODUCCIÓN: usa las imágenes ya publicadas en GHCR (no compila nada).
+# El usuario sólo necesita este archivo (y opcionalmente .env); no descarga el código.
+#
+#   IMAGE_PREFIX=ghcr.io/<tu-usuario-o-org> docker compose -f docker-compose.prod.yml up -d
+#
+# Las imágenes las publica el workflow de GitHub Actions al hacer push a main.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-biblioteca}
+      POSTGRES_USER: ${POSTGRES_USER:-biblioteca}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-biblioteca}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-biblioteca}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+
+  backend:
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/prestamos-biblioteca-backend:${IMAGE_TAG:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-biblioteca}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-biblioteca}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-biblioteca}
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: "1025"
+      JWT_SECRET: ${JWT_SECRET:?definí JWT_SECRET en .env}
+      # En un despliegue con HTTPS real, poné APP_COOKIE_SECURE=true.
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
+      APP_FRONTEND_BASE_URL: ${APP_FRONTEND_BASE_URL:-http://localhost:4200}
+      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@biblioteca.local}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?definí APP_ADMIN_PASSWORD en .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+  frontend:
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/prestamos-biblioteca-frontend:${IMAGE_TAG:-latest}
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+
+volumes:
+  pgdata:
