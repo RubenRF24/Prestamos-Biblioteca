@@ -221,11 +221,10 @@ ni las herramientas de build engordan la imagen.
 Con las imágenes ya publicadas, alcanza el `compose.prod.yaml` (usa `image:` de GHCR, no compila):
 
 ```bash
-IMAGE_PREFIX=ghcr.io/<tu-usuario> JWT_SECRET=... APP_ADMIN_PASSWORD=... \
-  docker compose -f compose.prod.yaml up -d
+JWT_SECRET=... APP_ADMIN_PASSWORD=... docker compose -f compose.prod.yaml up -d
 ```
 
-`IMAGE_PREFIX` es el owner de GHCR; `IMAGE_TAG` (opcional) fija una versión (por defecto `latest`).
+Las imágenes ya apuntan a `ghcr.io/rubenrf24` (no hace falta `IMAGE_PREFIX`); `IMAGE_TAG` (opcional) fija una versión (por defecto `latest`).
 
 ---
 

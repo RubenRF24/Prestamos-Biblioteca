@@ -1,7 +1,8 @@
 # Compose de PRODUCCIÓN: usa las imágenes ya publicadas en GHCR (no compila nada).
-# El usuario sólo necesita este archivo (y opcionalmente .env); no descarga el código.
+# El usuario sólo necesita este archivo; no descarga el código ni necesita setear
+# IMAGE_PREFIX porque las imágenes ya apuntan a ghcr.io/rubenrf24.
 #
-#   IMAGE_PREFIX=ghcr.io/<tu-usuario-o-org> docker compose -f docker-compose.prod.yml up -d
+#   JWT_SECRET=... APP_ADMIN_PASSWORD=... docker compose -f compose.prod.yaml up -d
 #
 # Las imágenes las publica el workflow de GitHub Actions al hacer push a main.
 
@@ -26,7 +27,7 @@ services:
       - "${MAILHOG_UI_PORT:-8025}:8025"
 
   backend:
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/prestamos-biblioteca-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/rubenrf24/prestamos-biblioteca-backend:${IMAGE_TAG:-latest}
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-biblioteca}
@@ -49,7 +50,7 @@ services:
       - "${BACKEND_PORT:-8080}:8080"
 
   frontend:
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/prestamos-biblioteca-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/rubenrf24/prestamos-biblioteca-frontend:${IMAGE_TAG:-latest}
     depends_on:
       - backend
     ports:
