@@ -92,6 +92,16 @@ public class NotificationService {
                 "email/book-available", vars);
     }
 
+    public void sendWelcome(Long userId) {
+        AppUser user = userService.getById(userId);
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("name", user.getName());
+        vars.put("loginLink", frontendProperties.baseUrl() + "/login");
+        mailSender.send(user.getEmail(),
+                "Bienvenido/a a la biblioteca",
+                "email/welcome", vars);
+    }
+
     public void sendActivation(Long userId) {
         AppUser user = userService.getById(userId);
         Map<String, Object> vars = new HashMap<>();

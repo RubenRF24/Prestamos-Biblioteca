@@ -4,6 +4,7 @@ import com.biblioteca.prestamosbiblioteca.loan.domain.LoanCreatedEvent;
 import com.biblioteca.prestamosbiblioteca.reservation.domain.BookAvailableEvent;
 import com.biblioteca.prestamosbiblioteca.user.domain.ActivationRequestedEvent;
 import com.biblioteca.prestamosbiblioteca.user.domain.UserBlockedEvent;
+import com.biblioteca.prestamosbiblioteca.user.domain.UserRegisteredEvent;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -44,5 +45,11 @@ public class EmailEventListeners {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onActivationRequested(ActivationRequestedEvent event) {
         notificationService.sendActivation(event.userId());
+    }
+
+    @Async("notificationExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onUserRegistered(UserRegisteredEvent event) {
+        notificationService.sendWelcome(event.userId());
     }
 }
