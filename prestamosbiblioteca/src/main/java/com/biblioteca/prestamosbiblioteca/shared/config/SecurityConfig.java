@@ -46,6 +46,9 @@ public class SecurityConfig {
                                            SecurityErrorHandlers errorHandlers) throws Exception {
         // Con cookie httpOnly + JWT, protegemos escritura con CSRF double-submit (XSRF-TOKEN legible por JS).
         CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
+        // Carga NO diferida del token: se materializa en cada request, así la cookie XSRF-TOKEN
+        // siempre está presente (evita el 403 en la primera mutación de la sesión).
+        csrfHandler.setCsrfRequestAttributeName(null);
 
         http
                 .csrf(csrf -> csrf
@@ -60,9 +63,12 @@ public class SecurityConfig {
                         .requestMatchers(SWAGGER).permitAll()
                         // Alta/baja de libros y estadísticas: sólo ADMIN.
                         .requestMatchers(HttpMethod.POST, "/api/books").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/books/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/books/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // El resto (catálogo, préstamos, reservas) requiere estar autenticado.
+                        // Préstamos y reservas: el rol lo controla @PreAuthorize por método
+                        // (USUARIO reserva y ve lo suyo; BIBLIOTECARIO confirma y ve los activos).
+                        // El resto (catálogo) requiere sólo estar autenticado.
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(errorHandlers.authenticationEntryPoint())
