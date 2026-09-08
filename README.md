@@ -28,7 +28,7 @@ Esto levanta **todo**:
 | **MailHog**   | http://localhost:8025            | Bandeja donde llegan los correos enviados |
 | PostgreSQL    | localhost:5433                   | Base de datos (5433 para no chocar con un Postgres local) |
 
-No hace falta crear ningún archivo: el `docker-compose.yml` trae defaults de desarrollo.
+No hace falta crear ningún archivo: el `compose.yaml` trae defaults de desarrollo.
 Para personalizarlos, copiá `.env.example` a `.env` y editá lo que necesites.
 
 > **Nota de puertos:** si ya tenés un proceso en `8080`/`4200` (p. ej. un `java` local), el
@@ -198,7 +198,7 @@ Cubre las cuatro áreas pedidas:
 
 - `dev` (default): Postgres/MailHog en `localhost`, cookie `Secure=false`.
 - `prod`: todo por variables de entorno (sin defaults sensibles), cookie `Secure=true` por defecto.
-  El `docker-compose` usa este perfil y setea `APP_COOKIE_SECURE=false` porque la demo corre sobre http.
+  El `compose.yaml` usa este perfil y setea `APP_COOKIE_SECURE=false` porque la demo corre sobre http.
 - `test`: datasource provisto por Testcontainers, SMTP embebido de GreenMail.
 
 ---
@@ -218,11 +218,11 @@ ni las herramientas de build engordan la imagen.
 
 ### Correr en producción (sin descargar el código)
 
-Con las imágenes ya publicadas, alcanza el `docker-compose.prod.yml` (usa `image:` de GHCR, no compila):
+Con las imágenes ya publicadas, alcanza el `compose.prod.yaml` (usa `image:` de GHCR, no compila):
 
 ```bash
 IMAGE_PREFIX=ghcr.io/<tu-usuario> JWT_SECRET=... APP_ADMIN_PASSWORD=... \
-  docker compose -f docker-compose.prod.yml up -d
+  docker compose -f compose.prod.yaml up -d
 ```
 
 `IMAGE_PREFIX` es el owner de GHCR; `IMAGE_TAG` (opcional) fija una versión (por defecto `latest`).
@@ -234,7 +234,8 @@ IMAGE_PREFIX=ghcr.io/<tu-usuario> JWT_SECRET=... APP_ADMIN_PASSWORD=... \
 ```
 prestamosbiblioteca/          Backend Spring Boot (+ Dockerfile)
 PrestamosBibliotecaFrontend/  Frontend Angular (+ Dockerfile + nginx.conf)
-docker-compose.yml            Orquestación completa
+compose.yaml                  Orquestación completa (estándar actual, sin prefijo docker-)
+compose.prod.yaml             Orquestación de producción (imágenes GHCR)
 .env.example                  Variables documentadas
 postman/                      Colección Postman de la API
 ```
