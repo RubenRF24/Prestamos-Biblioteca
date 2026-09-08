@@ -36,7 +36,7 @@ class AuthMockMvcTest {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("nuevo@mail.com"))
-                .andExpect(jsonPath("$.role").value("BIBLIOTECARIO"))
+                .andExpect(jsonPath("$.role").value("USUARIO"))
                 .andExpect(cookie().exists("access_token"))
                 .andExpect(header().exists("Set-Cookie"));
     }

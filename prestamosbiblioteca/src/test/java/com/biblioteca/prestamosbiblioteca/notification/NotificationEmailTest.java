@@ -54,11 +54,16 @@ class NotificationEmailTest {
         notificationService.sendLoanConfirmation(loan.getId());
 
         assertThat(greenMail.waitForIncomingEmail(5000, 1)).isTrue();
-        MimeMessage[] messages = greenMail.getReceivedMessages();
-        assertThat(messages).hasSizeGreaterThanOrEqualTo(1);
-        MimeMessage message = messages[0];
-        assertThat(message.getSubject()).contains("Confirmación de préstamo");
-        assertThat(message.getSubject()).contains("Refactoring");
-        assertThat(message.getAllRecipients()[0].toString()).isEqualTo("ana.confirm@mail.com");
+        // Puede haber otros correos (p. ej. bienvenida del registro); buscamos la confirmación.
+        MimeMessage confirmation = null;
+        for (MimeMessage message : greenMail.getReceivedMessages()) {
+            if (message.getSubject() != null && message.getSubject().contains("Confirmación de préstamo")) {
+                confirmation = message;
+                break;
+            }
+        }
+        assertThat(confirmation).as("correo de confirmación de préstamo").isNotNull();
+        assertThat(confirmation.getSubject()).contains("Refactoring");
+        assertThat(confirmation.getAllRecipients()[0].toString()).isEqualTo("ana.confirm@mail.com");
     }
 }
