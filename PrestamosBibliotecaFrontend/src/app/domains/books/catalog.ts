@@ -40,6 +40,19 @@ import { BooksService } from './books.service';
         <p class="rounded bg-[#f6e7e3] p-2 text-sm text-out">{{ error() }}</p>
       }
 
+      <!-- Aviso de reservas por confirmar (solo BIBLIOTECARIO) -->
+      @if (auth.isBibliotecario()) {
+        @if (pending().length > 0) {
+          <p class="rounded border border-amber/60 bg-amber/5 p-3 text-sm text-ink">
+            Tenés <strong>{{ pending().length }}</strong> reserva(s) por confirmar. Están marcadas en el listado.
+          </p>
+        } @else {
+          <p class="rounded border border-line bg-surface p-3 text-sm text-muted">
+            No hay reservas por confirmar en este momento.
+          </p>
+        }
+      }
+
       <!-- Alta de libro (solo ADMIN) -->
       @if (auth.isAdmin()) {
         <section class="rounded border border-line bg-surface p-4">
@@ -151,17 +164,17 @@ import { BooksService } from './books.service';
                       }
                     </div>
                   } @else if (auth.isBibliotecario()) {
-                    <!-- El bibliotecario confirma las reservas retenidas. -->
+                    <!-- El bibliotecario sólo confirma los libros que tienen una reserva retenida. -->
                     @if (pendingFor(book.id); as res) {
-                      <p class="mb-2 text-xs text-muted">
-                        Reservado por <span class="font-mono">{{ res.requesterEmail }}</span>
-                      </p>
-                      <button type="button" (click)="confirm(res)"
-                        class="rounded bg-forest px-3 py-1 text-sm font-medium text-white hover:bg-forest/90">
-                        Confirmar préstamo
-                      </button>
-                    } @else {
-                      <p class="text-xs text-muted italic">Sin reservas por confirmar</p>
+                      <div class="rounded border border-amber/60 bg-amber/5 p-2">
+                        <p class="mb-2 text-xs text-muted">
+                          Reservado por <span class="font-mono">{{ res.requesterEmail }}</span>
+                        </p>
+                        <button type="button" (click)="confirm(res)"
+                          class="rounded bg-forest px-3 py-1 text-sm font-medium text-white hover:bg-forest/90">
+                          Confirmar préstamo
+                        </button>
+                      </div>
                     }
                   } @else {
                     <!-- USUARIO: reserva; si ya lo tiene, se indica. -->
