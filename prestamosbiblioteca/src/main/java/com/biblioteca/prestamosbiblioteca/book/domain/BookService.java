@@ -72,6 +72,16 @@ public class BookService {
         }
     }
 
+    /** Edición de los datos de un libro (no cambia ISBN ni estado). */
+    @Transactional
+    public Book update(Long id, String title, String author, Integer publishedYear) {
+        Book book = getEntity(id);
+        book.setTitle(title);
+        book.setAuthor(author);
+        book.setPublishedYear(publishedYear);
+        return bookRepository.save(book);
+    }
+
     /** Baja de libro: sólo permitida si está DISPONIBLE. */
     @Transactional
     public void delete(Long id) {
