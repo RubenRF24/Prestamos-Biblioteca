@@ -88,14 +88,20 @@ loans, reservations, admin), cada uno con su servicio y sus páginas; estado con
 
 Cuando el enunciado dejaba algo ambiguo, se documenta acá la decisión tomada.
 
-1. **Modelo del actor que pide (registro *just-in-time*).** El enunciado mezclaba dos modelos:
-   `Loan` guarda `borrowerName`/`borrowerEmail` sueltos (sugiere un tercero) pero existe
-   `/loans/mine` y `AppUser` puede bloquearse "para pedir préstamos" (sugiere que el que pide es
-   el usuario). Resolución: **todo borrower es un `AppUser`, sin excepción.**
-   - Self-service: el usuario logueado pide para sí mismo.
-   - A nombre de un tercero: al prestarle a alguien nuevo se crea su cuenta **provisional**
-     (`PENDING_ACTIVATION`, sin contraseña); se le envía un correo **"activá tu cuenta"** y, al fijar
-     su contraseña, queda activa. Así el bloqueo por atrasos siempre tiene dónde vivir (`AppUser`).
+1. **Tres roles y flujo reserva → confirmación.** El enunciado nombraba sólo `ADMIN` y
+   `BIBLIOTECARIO`, pero al modelar quién reserva, quién presta y quién recibe aparecían tres
+   actores. Resolución (documentada como desvío del enunciado):
+   - **`ADMIN`**: gestiona el catálogo (alta/edición/baja), cuentas bloqueadas, estadísticas y da de
+     alta bibliotecarios. No presta ni reserva.
+   - **`BIBLIOTECARIO`** (personal de mesa, lo crea el ADMIN): **confirma** las reservas y ve la lista
+     paginada de **préstamos activos** (quién tiene cada libro). No tiene "mis préstamos".
+   - **`USUARIO`** (se registra solo): **reserva** libros y recibe los préstamos; ve "mis préstamos".
+   - **Flujo:** el `USUARIO` reserva un libro → queda **retenido** (`RESERVADO`) unos días; el
+     `BIBLIOTECARIO` lo ve en el catálogo y **confirma el préstamo**, y recién ahí arranca el conteo
+     de los 14 días. Los roles se controlan con `@PreAuthorize` por endpoint.
+   - `borrowerName`/`borrowerEmail` en `Loan` quedan como snapshot del lector al confirmar; el bloqueo
+     por atrasos vive en `AppUser`. La cuenta provisional con activación por correo sigue existiendo
+     para cuentas creadas sin contraseña.
 
 2. **JWT en cookie httpOnly + CSRF.** El token no vive en `localStorage` (inmune a robo por XSS):
    viaja en una cookie `HttpOnly; SameSite=Strict`. Como eso reabre el riesgo de CSRF, se habilita
@@ -161,6 +167,32 @@ Cubre las cuatro áreas pedidas:
 - `prod`: todo por variables de entorno (sin defaults sensibles), cookie `Secure=true` por defecto.
   El `docker-compose` usa este perfil y setea `APP_COOKIE_SECURE=false` porque la demo corre sobre http.
 - `test`: datasource provisto por Testcontainers, SMTP embebido de GreenMail.
+
+---
+
+## CI/CD e imágenes (GitHub Actions + GHCR)
+
+El workflow `.github/workflows/ci.yml` corre en cada push/PR a `main`:
+
+1. **Tests del backend** (`mvnw test`, con Testcontainers) y **build del frontend** (`bun run build`).
+2. Sólo en push a `main`, **publica las imágenes** del backend y del frontend en **GHCR**
+   (`ghcr.io/<owner>/prestamos-biblioteca-backend` y `-frontend`), con tags `latest` y el SHA.
+
+**Imágenes livianas:** los `Dockerfile` son **multi-stage** — un stage compila (Maven / Bun) y el
+stage final parte de una base mínima (**JRE 21** / **Nginx**) y **sólo copia el artefacto** (el `.jar`
+o el `dist/`). El stage de build se descarta: no queda en la imagen final, así que ni el código fuente
+ni las herramientas de build engordan la imagen.
+
+### Correr en producción (sin descargar el código)
+
+Con las imágenes ya publicadas, alcanza el `docker-compose.prod.yml` (usa `image:` de GHCR, no compila):
+
+```bash
+IMAGE_PREFIX=ghcr.io/<tu-usuario> JWT_SECRET=... APP_ADMIN_PASSWORD=... \
+  docker compose -f docker-compose.prod.yml up -d
+```
+
+`IMAGE_PREFIX` es el owner de GHCR; `IMAGE_TAG` (opcional) fija una versión (por defecto `latest`).
 
 ---
 

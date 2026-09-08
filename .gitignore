@@ -14,3 +14,6 @@ PrestamosBibliotecaFrontend/.angular/
 *.iml
 .DS_Store
 .atl/
+.agents/
+.claude/
+skills-lock.json
