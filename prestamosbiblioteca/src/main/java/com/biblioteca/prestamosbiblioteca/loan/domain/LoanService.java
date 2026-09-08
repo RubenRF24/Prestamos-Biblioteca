@@ -4,7 +4,9 @@ import com.biblioteca.prestamosbiblioteca.book.domain.Book;
 import com.biblioteca.prestamosbiblioteca.book.domain.BookService;
 import com.biblioteca.prestamosbiblioteca.book.domain.BookStatus;
 import com.biblioteca.prestamosbiblioteca.loan.infra.LoanRepository;
+import com.biblioteca.prestamosbiblioteca.reservation.domain.Reservation;
 import com.biblioteca.prestamosbiblioteca.reservation.domain.ReservationService;
+import com.biblioteca.prestamosbiblioteca.reservation.domain.ReservationStatus;
 import com.biblioteca.prestamosbiblioteca.shared.exception.BookNotAvailableException;
 import com.biblioteca.prestamosbiblioteca.shared.exception.LoanAlreadyReturnedException;
 import com.biblioteca.prestamosbiblioteca.shared.exception.ResourceNotFoundException;
@@ -15,6 +17,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,6 +87,43 @@ public class LoanService {
 
         events.publishEvent(new LoanCreatedEvent(loan.getId()));
         return loan;
+    }
+
+    /**
+     * El bibliotecario confirma una reserva retenida: arranca el préstamo (la fecha límite se cuenta
+     * desde ahora), el libro pasa a PRESTADO y la reserva queda CUMPLIDA.
+     */
+    @Transactional
+    public Loan confirmReservation(Long reservationId) {
+        Reservation reservation = reservationService.getById(reservationId);
+        if (reservation.getStatus() != ReservationStatus.NOTIFICADO) {
+            throw new BookNotAvailableException("La reserva no está lista para confirmar");
+        }
+        AppUser borrower = reservation.getRequester();
+        Instant now = Instant.now();
+        userService.clearExpiredBlock(borrower);
+        if (borrower.isCurrentlyBlocked(now)) {
+            throw new UserBlockedException("La cuenta del lector está bloqueada");
+        }
+        Book book = reservation.getBook();
+        Loan loan = Loan.builder()
+                .book(book)
+                .borrower(borrower)
+                .borrowerName(borrower.getName())
+                .borrowerEmail(borrower.getEmail())
+                .loanDate(now)
+                .dueDate(now.plus(Duration.ofDays(properties.loanDays())))
+                .build();
+        loan = loanRepository.save(loan);
+        bookService.changeStatus(book, BookStatus.PRESTADO);
+        reservationService.markFulfilled(reservation);
+        events.publishEvent(new LoanCreatedEvent(loan.getId()));
+        return loan;
+    }
+
+    /** Préstamos activos (no devueltos) paginados, para la mesa del bibliotecario. */
+    public Page<Loan> findActive(Pageable pageable) {
+        return loanRepository.findActiveWithBook(pageable);
     }
 
     /** Devolución. Contabiliza atrasos, bloquea si corresponde y gestiona la lista de espera. */
