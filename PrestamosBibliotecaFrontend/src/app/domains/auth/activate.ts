@@ -8,34 +8,34 @@ import { apiErrorMessage } from '../../core/http/api-error';
   selector: 'app-activate',
   imports: [ReactiveFormsModule],
   template: `
-    <div class="mx-auto mt-10 max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h1 class="mb-2 text-xl font-bold">Activá tu cuenta</h1>
-      <p class="mb-4 text-sm text-slate-600">Definí una contraseña para empezar a usar tu cuenta.</p>
+    <div class="mx-auto mt-10 max-w-sm rounded border border-line bg-surface p-6 shadow-sm">
+      <h1 class="font-serif mb-2 text-xl font-bold text-ink">Activá tu cuenta</h1>
+      <p class="mb-4 text-sm text-muted">Definí una contraseña para empezar a usar tu cuenta.</p>
       @if (!token()) {
-        <p class="rounded-md bg-red-50 p-2 text-sm text-red-700">
+        <p class="rounded bg-[#f6e7e3] p-2 text-sm text-out">
           Falta el token de activación en el enlace.
         </p>
       } @else {
         <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
           <div>
-            <label class="mb-1 block text-sm font-medium" for="password">Nueva contraseña</label>
+            <label class="mb-1 block text-sm font-medium text-ink" for="password">Nueva contraseña</label>
             <input
               id="password"
               type="password"
               formControlName="password"
-              class="w-full rounded-md border border-slate-300 px-3 py-2"
+              class="w-full rounded border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:border-forest"
             />
             @if (form.controls.password.touched && form.controls.password.invalid) {
-              <p class="mt-1 text-xs text-red-600">Mínimo 8 caracteres.</p>
+              <p class="mt-1 text-xs text-out">Mínimo 8 caracteres.</p>
             }
           </div>
           @if (error()) {
-            <p class="rounded-md bg-red-50 p-2 text-sm text-red-700">{{ error() }}</p>
+            <p class="rounded bg-[#f6e7e3] p-2 text-sm text-out">{{ error() }}</p>
           }
           <button
             type="submit"
             [disabled]="loading()"
-            class="w-full rounded-md bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            class="w-full rounded bg-forest py-2 font-medium text-white hover:bg-forest/90 disabled:opacity-50"
           >
             {{ loading() ? 'Activando…' : 'Activar cuenta' }}
           </button>

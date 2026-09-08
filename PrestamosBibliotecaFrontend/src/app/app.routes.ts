@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { adminGuard, authGuard } from './core/auth/guards';
+import { adminGuard, authGuard, bibliotecarioGuard, usuarioGuard } from './core/auth/guards';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'catalog' },
@@ -22,8 +22,13 @@ export const routes: Routes = [
   },
   {
     path: 'my-loans',
-    canActivate: [authGuard],
+    canActivate: [authGuard, usuarioGuard],
     loadComponent: () => import('./domains/loans/my-loans').then((m) => m.MyLoans),
+  },
+  {
+    path: 'active-loans',
+    canActivate: [authGuard, bibliotecarioGuard],
+    loadComponent: () => import('./domains/loans/active-loans').then((m) => m.ActiveLoans),
   },
   {
     path: 'admin',

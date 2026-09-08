@@ -8,6 +8,15 @@ import { Reservation } from '../../core/models';
 export class ReservationsService {
   private readonly http = inject(HttpClient);
 
+  mine(): Observable<Reservation[]> {
+    return this.http.get<Reservation[]>(`${API_BASE}/reservations/mine`);
+  }
+
+  /** Reservas retenidas a confirmar (BIBLIOTECARIO). */
+  pending(): Observable<Reservation[]> {
+    return this.http.get<Reservation[]>(`${API_BASE}/reservations/pending`);
+  }
+
   create(bookId: number): Observable<Reservation> {
     return this.http.post<Reservation>(`${API_BASE}/reservations`, { bookId });
   }

@@ -6,38 +6,48 @@ import { AuthStore } from './core/auth/auth.store';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <div class="min-h-dvh bg-slate-50 text-slate-800">
-      <header class="border-b border-slate-200 bg-white">
+    <div class="min-h-dvh bg-paper text-ink">
+      <header class="border-b border-line bg-surface">
         <nav class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <a routerLink="/catalog" class="text-lg font-bold text-blue-700">📚 Biblioteca</a>
+          <a routerLink="/catalog" class="font-serif text-lg font-bold tracking-tight text-forest">📚 Biblioteca</a>
           @if (auth.isAuthenticated()) {
             <div class="flex items-center gap-4 text-sm">
               <a
                 routerLink="/catalog"
-                routerLinkActive="text-blue-700 font-semibold"
-                class="hover:text-blue-700"
+                routerLinkActive="text-forest font-semibold shadow-[inset_0_-2px_0_var(--color-amber)]"
+                class="hover:text-forest"
                 >Catálogo</a
               >
-              <a
-                routerLink="/my-loans"
-                routerLinkActive="text-blue-700 font-semibold"
-                class="hover:text-blue-700"
-                >Mis préstamos</a
-              >
+              @if (auth.isUsuario()) {
+                <a
+                  routerLink="/my-loans"
+                  routerLinkActive="text-forest font-semibold shadow-[inset_0_-2px_0_var(--color-amber)]"
+                  class="hover:text-forest"
+                  >Mis préstamos</a
+                >
+              }
+              @if (auth.isBibliotecario()) {
+                <a
+                  routerLink="/active-loans"
+                  routerLinkActive="text-forest font-semibold shadow-[inset_0_-2px_0_var(--color-amber)]"
+                  class="hover:text-forest"
+                  >Préstamos activos</a
+                >
+              }
               @if (auth.isAdmin()) {
                 <a
                   routerLink="/admin"
-                  routerLinkActive="text-blue-700 font-semibold"
-                  class="hover:text-blue-700"
+                  routerLinkActive="text-forest font-semibold shadow-[inset_0_-2px_0_var(--color-amber)]"
+                  class="hover:text-forest"
                   >Administración</a
                 >
               }
-              <span class="text-slate-400">|</span>
-              <span class="text-slate-600">{{ auth.user()?.name }}</span>
+              <span class="text-muted">|</span>
+              <span class="text-muted">{{ auth.user()?.name }}</span>
               <button
                 type="button"
                 (click)="auth.logout()"
-                class="rounded-md bg-slate-100 px-3 py-1 font-medium hover:bg-slate-200"
+                class="rounded border border-line bg-paper px-3 py-1 font-medium text-ink hover:bg-surface"
               >
                 Salir
               </button>

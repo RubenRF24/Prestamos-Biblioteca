@@ -1,5 +1,13 @@
-export type Role = 'ADMIN' | 'BIBLIOTECARIO';
+export type Role = 'ADMIN' | 'BIBLIOTECARIO' | 'USUARIO';
 export type BookStatus = 'DISPONIBLE' | 'PRESTADO' | 'RESERVADO';
+
+export interface Page<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
 
 export interface AuthUser {
   id: number;

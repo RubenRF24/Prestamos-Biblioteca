@@ -18,6 +18,8 @@ export class AuthStore {
   readonly initialized = this._initialized.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
   readonly isAdmin = computed(() => this._user()?.role === 'ADMIN');
+  readonly isBibliotecario = computed(() => this._user()?.role === 'BIBLIOTECARIO');
+  readonly isUsuario = computed(() => this._user()?.role === 'USUARIO');
 
   /** Consulta al backend quién es el usuario actual (200 = logueado, 401 = anónimo). */
   loadCurrentUser(): Observable<AuthUser | null> {

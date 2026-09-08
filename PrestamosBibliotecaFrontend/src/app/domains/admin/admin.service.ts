@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../../core/api';
-import { BlockedUser, Stats } from '../../core/models';
+import { AuthUser, BlockedUser, Stats } from '../../core/models';
+
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  password: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
@@ -10,6 +16,10 @@ export class AdminService {
 
   stats(): Observable<Stats> {
     return this.http.get<Stats>(`${API_BASE}/admin/stats`);
+  }
+
+  createLibrarian(payload: CreateUserPayload): Observable<AuthUser> {
+    return this.http.post<AuthUser>(`${API_BASE}/admin/users`, payload);
   }
 
   blockedUsers(): Observable<BlockedUser[]> {

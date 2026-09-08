@@ -34,6 +34,10 @@ export class BooksService {
     return this.http.post<Book>(`${API_BASE}/books`, payload);
   }
 
+  update(id: number, payload: Omit<CreateBookPayload, 'isbn'>): Observable<Book> {
+    return this.http.put<Book>(`${API_BASE}/books/${id}`, payload);
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${API_BASE}/books/${id}`);
   }

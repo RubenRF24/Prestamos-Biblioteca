@@ -9,55 +9,41 @@ import { LoansService } from './loans.service';
   imports: [DatePipe],
   template: `
     <div class="space-y-4">
-      <h1 class="text-2xl font-bold">Mis préstamos</h1>
+      <h1 class="font-serif text-2xl font-bold text-ink">Mis préstamos</h1>
+      <p class="text-sm text-muted">La devolución se registra en la biblioteca al entregar el libro.</p>
 
       @if (error()) {
-        <p class="rounded-md bg-red-50 p-2 text-sm text-red-700">{{ error() }}</p>
-      }
-      @if (message()) {
-        <p class="rounded-md bg-emerald-50 p-2 text-sm text-emerald-700">{{ message() }}</p>
+        <p class="rounded bg-[#f6e7e3] p-2 text-sm text-out">{{ error() }}</p>
       }
 
       @if (loading()) {
-        <p class="text-slate-500">Cargando…</p>
+        <p class="text-muted">Cargando…</p>
       } @else if (loans().length === 0) {
-        <p class="text-slate-500">Todavía no tenés préstamos.</p>
+        <p class="text-muted">Todavía no tenés préstamos.</p>
       } @else {
-        <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div class="overflow-x-auto rounded border border-line bg-surface">
           <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-600">
+            <thead class="bg-paper font-serif text-muted">
               <tr>
                 <th class="px-4 py-2">Libro</th>
                 <th class="px-4 py-2">Prestado</th>
                 <th class="px-4 py-2">Vence</th>
                 <th class="px-4 py-2">Estado</th>
-                <th class="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
               @for (loan of loans(); track loan.id) {
-                <tr class="border-t border-slate-100">
-                  <td class="px-4 py-2 font-medium">{{ loan.bookTitle }}</td>
-                  <td class="px-4 py-2">{{ loan.loanDate | date: 'dd/MM/yyyy' }}</td>
-                  <td class="px-4 py-2">{{ loan.dueDate | date: 'dd/MM/yyyy' }}</td>
+                <tr class="border-t border-line">
+                  <td class="px-4 py-2 font-medium text-ink">{{ loan.bookTitle }}</td>
+                  <td class="px-4 py-2 font-mono text-xs text-muted">{{ loan.loanDate | date: 'dd/MM/yyyy' }}</td>
+                  <td class="px-4 py-2 font-mono text-xs text-muted">{{ loan.dueDate | date: 'dd/MM/yyyy' }}</td>
                   <td class="px-4 py-2">
                     @if (loan.returned) {
-                      <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">Devuelto</span>
+                      <span class="rounded-full border border-line bg-paper px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted">Devuelto</span>
                     } @else if (loan.overdue) {
-                      <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">Vencido</span>
+                      <span class="rounded-full bg-[#f6e7e3] px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-out">Vencido</span>
                     } @else {
-                      <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Vigente</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2 text-right">
-                    @if (!loan.returned) {
-                      <button
-                        type="button"
-                        (click)="returnLoan(loan)"
-                        class="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
-                      >
-                        Devolver
-                      </button>
+                      <span class="rounded-full bg-[#e7efe7] px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-ok">Vigente</span>
                     }
                   </td>
                 </tr>
@@ -75,7 +61,6 @@ export class MyLoans implements OnInit {
   protected readonly loans = signal<Loan[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly message = signal<string | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -93,17 +78,6 @@ export class MyLoans implements OnInit {
         this.loading.set(false);
         this.error.set(apiErrorMessage(e, 'No se pudieron cargar tus préstamos.'));
       },
-    });
-  }
-
-  returnLoan(loan: Loan): void {
-    this.loansService.return(loan.id).subscribe({
-      next: () => {
-        this.message.set(`Devolviste: ${loan.bookTitle}.`);
-        this.error.set(null);
-        this.load();
-      },
-      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo devolver el libro.')),
     });
   }
 }

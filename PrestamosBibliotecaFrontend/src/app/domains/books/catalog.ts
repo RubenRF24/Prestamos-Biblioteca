@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthStore } from '../../core/auth/auth.store';
 import { apiErrorMessage } from '../../core/http/api-error';
-import { Book, BookStatus } from '../../core/models';
+import { Book, BookStatus, Reservation } from '../../core/models';
 import { LoansService } from '../loans/loans.service';
 import { ReservationsService } from '../reservations/reservations.service';
 import { BooksService } from './books.service';
@@ -12,9 +12,7 @@ import { BooksService } from './books.service';
   imports: [ReactiveFormsModule],
   template: `
     <div class="space-y-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Catálogo</h1>
-      </div>
+      <h1 class="font-serif text-2xl font-bold text-ink">Catálogo</h1>
 
       <!-- Búsqueda -->
       <form [formGroup]="searchForm" (ngSubmit)="load()" class="flex flex-wrap gap-3">
@@ -22,43 +20,43 @@ import { BooksService } from './books.service';
           type="text"
           formControlName="q"
           placeholder="Buscar por título o autor…"
-          class="flex-1 rounded-md border border-slate-300 px-3 py-2"
+          class="flex-1 rounded border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:border-forest"
         />
-        <select formControlName="status" class="rounded-md border border-slate-300 px-3 py-2">
+        <select formControlName="status" class="rounded border border-line bg-surface px-3 py-2 text-ink focus:outline-none focus:border-forest">
           <option value="">Todos los estados</option>
           <option value="DISPONIBLE">Disponible</option>
           <option value="PRESTADO">Prestado</option>
           <option value="RESERVADO">Reservado</option>
         </select>
-        <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">
+        <button type="submit" class="rounded bg-forest px-4 py-2 font-medium text-white hover:bg-forest/90">
           Buscar
         </button>
       </form>
 
       @if (message()) {
-        <p class="rounded-md bg-emerald-50 p-2 text-sm text-emerald-700">{{ message() }}</p>
+        <p class="rounded bg-[#e7efe7] p-2 text-sm text-ok">{{ message() }}</p>
       }
       @if (error()) {
-        <p class="rounded-md bg-red-50 p-2 text-sm text-red-700">{{ error() }}</p>
+        <p class="rounded bg-[#f6e7e3] p-2 text-sm text-out">{{ error() }}</p>
       }
 
       <!-- Alta de libro (solo ADMIN) -->
       @if (auth.isAdmin()) {
-        <section class="rounded-xl border border-slate-200 bg-white p-4">
-          <h2 class="mb-3 font-semibold">Agregar libro</h2>
+        <section class="rounded border border-line bg-surface p-4">
+          <h2 class="font-serif mb-3 font-semibold text-ink">Agregar libro</h2>
           <form [formGroup]="createForm" (ngSubmit)="create()" class="grid gap-3 md:grid-cols-2">
             <div class="md:col-span-2 flex gap-2">
               <input
                 type="text"
                 formControlName="isbn"
                 placeholder="ISBN"
-                class="flex-1 rounded-md border border-slate-300 px-3 py-2"
+                class="flex-1 rounded border border-line bg-surface px-3 py-2 font-mono text-xs text-ink placeholder:text-muted focus:outline-none focus:border-forest"
               />
               <button
                 type="button"
                 (click)="lookup()"
                 [disabled]="lookupLoading()"
-                class="rounded-md bg-slate-100 px-3 py-2 text-sm font-medium hover:bg-slate-200 disabled:opacity-50"
+                class="rounded border border-line bg-transparent px-3 py-2 text-sm font-medium text-ink hover:bg-forest/5 disabled:opacity-50"
               >
                 {{ lookupLoading() ? 'Buscando…' : 'Autocompletar desde ISBN' }}
               </button>
@@ -67,25 +65,25 @@ import { BooksService } from './books.service';
               type="text"
               formControlName="title"
               placeholder="Título"
-              class="rounded-md border border-slate-300 px-3 py-2"
+              class="rounded border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:border-forest"
             />
             <input
               type="text"
               formControlName="author"
               placeholder="Autor"
-              class="rounded-md border border-slate-300 px-3 py-2"
+              class="rounded border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:border-forest"
             />
             <input
               type="number"
               formControlName="publishedYear"
               placeholder="Año"
-              class="rounded-md border border-slate-300 px-3 py-2"
+              class="rounded border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:border-forest"
             />
             <div class="md:col-span-2">
               <button
                 type="submit"
                 [disabled]="createLoading()"
-                class="rounded-md bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                class="rounded bg-forest px-4 py-2 font-medium text-white hover:bg-forest/90 disabled:opacity-50"
               >
                 {{ createLoading() ? 'Guardando…' : 'Guardar libro' }}
               </button>
@@ -96,62 +94,90 @@ import { BooksService } from './books.service';
 
       <!-- Listado -->
       @if (loading()) {
-        <p class="text-slate-500">Cargando catálogo…</p>
+        <p class="text-muted">Cargando catálogo…</p>
       } @else if (books().length === 0) {
-        <p class="text-slate-500">No se encontraron libros.</p>
+        <p class="text-muted">No se encontraron libros.</p>
       } @else {
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           @for (book of books(); track book.id) {
-            <article class="flex flex-col rounded-xl border border-slate-200 bg-white p-4">
+            <article class="flex flex-col rounded border border-line bg-surface p-4">
               <div class="flex gap-3">
                 @if (book.coverUrl) {
                   <img
                     [src]="book.coverUrl"
                     [alt]="'Portada de ' + book.title"
-                    class="h-24 w-16 rounded object-cover"
+                    class="h-24 w-16 rounded border border-line object-cover"
                   />
+                } @else {
+                  <div class="flex h-24 w-16 shrink-0 items-center justify-center rounded bg-forest p-2 text-center">
+                    <span class="font-serif text-[10px] font-semibold leading-tight text-[#e9e2cf] line-clamp-4">{{ book.title }}</span>
+                  </div>
                 }
                 <div class="min-w-0 flex-1">
-                  <h3 class="truncate font-semibold" [title]="book.title">{{ book.title }}</h3>
-                  <p class="truncate text-sm text-slate-600">{{ book.author }}</p>
+                  <h3 class="font-serif truncate font-semibold text-ink" [title]="book.title">{{ book.title }}</h3>
+                  <p class="truncate text-sm text-muted">{{ book.author }}</p>
                   @if (book.publishedYear) {
-                    <p class="text-xs text-slate-400">{{ book.publishedYear }}</p>
+                    <p class="font-mono text-xs text-muted">{{ book.publishedYear }}</p>
                   }
                   <span
-                    class="mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                    class="mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide"
                     [class]="statusClass(book.status)"
                     >{{ book.status }}</span
                   >
                 </div>
               </div>
-              <div class="mt-3 flex gap-2">
-                @if (book.status === 'DISPONIBLE') {
-                  <button
-                    type="button"
-                    (click)="lend(book)"
-                    class="rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700"
-                  >
-                    Prestar
-                  </button>
-                } @else {
-                  <button
-                    type="button"
-                    (click)="reserve(book)"
-                    class="rounded-md bg-amber-500 px-3 py-1 text-sm font-medium text-white hover:bg-amber-600"
-                  >
-                    Reservar
-                  </button>
-                }
-                @if (auth.isAdmin() && book.status === 'DISPONIBLE') {
-                  <button
-                    type="button"
-                    (click)="remove(book)"
-                    class="rounded-md bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200"
-                  >
-                    Eliminar
-                  </button>
-                }
-              </div>
+
+              @if (editingId() === book.id) {
+                <!-- Edición inline (solo ADMIN) -->
+                <form [formGroup]="editForm" (ngSubmit)="saveEdit(book)" class="mt-3 space-y-2">
+                  <input type="text" formControlName="title" placeholder="Título"
+                    class="w-full rounded border border-line bg-surface px-2 py-1 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-forest" />
+                  <input type="text" formControlName="author" placeholder="Autor"
+                    class="w-full rounded border border-line bg-surface px-2 py-1 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-forest" />
+                  <input type="number" formControlName="publishedYear" placeholder="Año"
+                    class="w-full rounded border border-line bg-surface px-2 py-1 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-forest" />
+                  <div class="flex gap-2">
+                    <button type="submit" class="rounded bg-forest px-3 py-1 text-sm font-medium text-white hover:bg-forest/90">Guardar</button>
+                    <button type="button" (click)="cancelEdit()" class="rounded border border-line bg-transparent px-3 py-1 text-sm font-medium text-ink hover:bg-forest/5">Cancelar</button>
+                  </div>
+                </form>
+              } @else {
+                <div class="mt-3">
+                  @if (auth.isAdmin()) {
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" (click)="startEdit(book)" class="rounded bg-forest px-3 py-1 text-sm font-medium text-white hover:bg-forest/90">Editar</button>
+                      @if (book.status === 'DISPONIBLE') {
+                        <button type="button" (click)="remove(book)" class="rounded bg-[#f6e7e3] px-3 py-1 text-sm font-medium text-out hover:bg-[#efd9d3]">Eliminar</button>
+                      }
+                    </div>
+                  } @else if (auth.isBibliotecario()) {
+                    <!-- El bibliotecario confirma las reservas retenidas. -->
+                    @if (pendingFor(book.id); as res) {
+                      <p class="mb-2 text-xs text-muted">
+                        Reservado por <span class="font-mono">{{ res.requesterEmail }}</span>
+                      </p>
+                      <button type="button" (click)="confirm(res)"
+                        class="rounded bg-forest px-3 py-1 text-sm font-medium text-white hover:bg-forest/90">
+                        Confirmar préstamo
+                      </button>
+                    } @else {
+                      <p class="text-xs text-muted italic">Sin reservas por confirmar</p>
+                    }
+                  } @else {
+                    <!-- USUARIO: reserva; si ya lo tiene, se indica. -->
+                    @if (hasBorrowed(book.id)) {
+                      <p class="text-sm italic text-muted">Ya lo tenés prestado</p>
+                    } @else if (hasReserved(book.id)) {
+                      <p class="text-sm italic text-muted">Ya lo reservaste</p>
+                    } @else {
+                      <button type="button" (click)="reserve(book)"
+                        class="rounded border border-amber bg-transparent px-3 py-1 text-sm font-medium text-[#8a6115] hover:bg-amber/10">
+                        Reservar
+                      </button>
+                    }
+                  }
+                </div>
+              }
             </article>
           }
         </div>
@@ -173,10 +199,7 @@ export class Catalog implements OnInit {
   protected readonly lookupLoading = signal(false);
   protected readonly createLoading = signal(false);
 
-  protected readonly searchForm = this.fb.nonNullable.group({
-    q: [''],
-    status: [''],
-  });
+  protected readonly searchForm = this.fb.nonNullable.group({ q: [''], status: [''] });
   protected readonly createForm = this.fb.nonNullable.group({
     title: ['', [Validators.required]],
     author: ['', [Validators.required]],
@@ -184,8 +207,51 @@ export class Catalog implements OnInit {
     publishedYear: [null as number | null],
   });
 
+  protected readonly editingId = signal<number | null>(null);
+  protected readonly editForm = this.fb.nonNullable.group({
+    title: ['', [Validators.required]],
+    author: ['', [Validators.required]],
+    publishedYear: [null as number | null],
+  });
+
+  // USUARIO: relación con cada libro. BIBLIOTECARIO: reservas por confirmar.
+  protected readonly borrowedIds = signal<Set<number>>(new Set());
+  protected readonly reservedIds = signal<Set<number>>(new Set());
+  protected readonly pending = signal<Reservation[]>([]);
+
   ngOnInit(): void {
     this.load();
+    this.loadRelations();
+  }
+
+  hasBorrowed(bookId: number): boolean {
+    return this.borrowedIds().has(bookId);
+  }
+  hasReserved(bookId: number): boolean {
+    return this.reservedIds().has(bookId);
+  }
+  pendingFor(bookId: number): Reservation | undefined {
+    return this.pending().find((r) => r.bookId === bookId);
+  }
+
+  /** Carga la relación del usuario con los libros según su rol. */
+  loadRelations(): void {
+    if (this.auth.isUsuario()) {
+      this.loansService.mine().subscribe({
+        next: (loans) =>
+          this.borrowedIds.set(new Set(loans.filter((l) => !l.returned).map((l) => l.bookId))),
+        error: () => {},
+      });
+      this.reservationsService.mine().subscribe({
+        next: (rs) => this.reservedIds.set(new Set(rs.map((r) => r.bookId))),
+        error: () => {},
+      });
+    } else if (this.auth.isBibliotecario()) {
+      this.reservationsService.pending().subscribe({
+        next: (rs) => this.pending.set(rs),
+        error: () => {},
+      });
+    }
   }
 
   load(): void {
@@ -201,6 +267,28 @@ export class Catalog implements OnInit {
         this.loading.set(false);
         this.error.set(apiErrorMessage(e, 'No se pudo cargar el catálogo.'));
       },
+    });
+  }
+
+  reserve(book: Book): void {
+    this.reservationsService.create(book.id).subscribe({
+      next: () => {
+        this.flash(`Reservaste: ${book.title}. Retirá el libro dentro del plazo.`);
+        this.load();
+        this.loadRelations();
+      },
+      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo reservar.')),
+    });
+  }
+
+  confirm(reservation: Reservation): void {
+    this.loansService.confirm(reservation.id).subscribe({
+      next: () => {
+        this.flash(`Préstamo confirmado para ${reservation.requesterEmail}.`);
+        this.load();
+        this.loadRelations();
+      },
+      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo confirmar el préstamo.')),
     });
   }
 
@@ -248,20 +336,25 @@ export class Catalog implements OnInit {
     });
   }
 
-  lend(book: Book): void {
-    this.loansService.create({ bookId: book.id }).subscribe({
+  startEdit(book: Book): void {
+    this.editingId.set(book.id);
+    this.editForm.reset({ title: book.title, author: book.author, publishedYear: book.publishedYear });
+  }
+  cancelEdit(): void {
+    this.editingId.set(null);
+  }
+  saveEdit(book: Book): void {
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+    this.booksService.update(book.id, this.editForm.getRawValue()).subscribe({
       next: () => {
-        this.flash(`Préstamo registrado: ${book.title}.`);
+        this.editingId.set(null);
+        this.flash('Libro actualizado.');
         this.load();
       },
-      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo registrar el préstamo.')),
-    });
-  }
-
-  reserve(book: Book): void {
-    this.reservationsService.create(book.id).subscribe({
-      next: () => this.flash(`Quedaste en la lista de espera de: ${book.title}.`),
-      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo reservar.')),
+      error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo actualizar el libro.')),
     });
   }
 
@@ -278,11 +371,11 @@ export class Catalog implements OnInit {
   statusClass(status: BookStatus): string {
     switch (status) {
       case 'DISPONIBLE':
-        return 'bg-emerald-100 text-emerald-700';
+        return 'bg-[#e7efe7] text-ok';
       case 'PRESTADO':
-        return 'bg-red-100 text-red-700';
+        return 'bg-[#f6e7e3] text-out';
       default:
-        return 'bg-amber-100 text-amber-700';
+        return 'bg-[#f3e8cf] text-res';
     }
   }
 
