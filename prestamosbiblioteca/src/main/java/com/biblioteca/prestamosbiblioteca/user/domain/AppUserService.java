@@ -31,9 +31,19 @@ public class AppUserService {
         this.events = events;
     }
 
-    /** Auto-registro público: crea una cuenta ACTIVE con rol BIBLIOTECARIO. */
+    /** Auto-registro público: crea una cuenta ACTIVE con rol USUARIO (lector). */
     @Transactional
     public AppUser register(String name, String email, String rawPassword) {
+        return createActive(name, email, rawPassword, Role.USUARIO);
+    }
+
+    /** Alta de cuenta por parte de un ADMIN (staff). */
+    @Transactional
+    public AppUser createByAdmin(String name, String email, String rawPassword, Role role) {
+        return createActive(name, email, rawPassword, role == null ? Role.BIBLIOTECARIO : role);
+    }
+
+    private AppUser createActive(String name, String email, String rawPassword, Role role) {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new EmailAlreadyUsedException(email);
         }
@@ -41,10 +51,12 @@ public class AppUserService {
                 .name(name)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(rawPassword))
-                .role(Role.BIBLIOTECARIO)
+                .role(role)
                 .status(UserStatus.ACTIVE)
                 .build();
-        return userRepository.save(user);
+        AppUser saved = userRepository.save(user);
+        events.publishEvent(new UserRegisteredEvent(saved.getId()));
+        return saved;
     }
 
     /**
@@ -62,7 +74,7 @@ public class AppUserService {
                 .name(name)
                 .email(email)
                 .passwordHash(null)
-                .role(Role.BIBLIOTECARIO)
+                .role(Role.USUARIO)
                 .status(UserStatus.PENDING_ACTIVATION)
                 .activationToken(UUID.randomUUID().toString())
                 .activationTokenExpiresAt(Instant.now().plus(ACTIVATION_TTL))
